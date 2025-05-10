@@ -27,10 +27,27 @@ def type_token_ratio(text: str) -> float:
     return len(set(words)) / len(words)
 
 
-sample_string = "what is entropy after all? entropy is something mathy"
+def brunet_index(text: str) -> float:
+    words = text.split()
+    return len(words) ** len(set(words)) ** -0.165
+
+
+def honore_statistic(text: str) -> float:
+    words = text.split()
+    word_counts = Counter(words)
+    v1 = len([word for word, count in word_counts.items() if count == 1])
+    v = len(word_counts)
+    return 100 * math.log(len(words)) / (1 - v1 / v)
+
+
+sample_string = "what is entropy after all? entropy is something mathy and weird. entropy entropy entropy"
 char_e = character_entropy(sample_string)
 word_e = word_entropy(sample_string)
 ttr = type_token_ratio(sample_string)
+brunet = brunet_index(sample_string)
+honore = honore_statistic(sample_string)
 print(f"Character entropy: {char_e:.2f}")
 print(f"Word entropy: {word_e:.2f}")
 print(f"TTR: {ttr:.2f}")
+print(f"Brunet: {brunet:.2f}")
+print(f"Honoré: {honore:.2f}")

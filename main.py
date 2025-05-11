@@ -1,5 +1,7 @@
 import math
-from collections import Counter
+from collections import Counter, defaultdict
+
+from nltk.util import ngrams
 
 
 def character_entropy(text: str) -> float:
@@ -40,6 +42,31 @@ def honore_statistic(text: str) -> float:
     return 100 * math.log(len(words)) / (1 - v1 / v)
 
 
+def ngram_entropy(text, n=2, mode="char"):
+    if mode == "char":
+        tokens = list(text)
+    elif mode == "word":
+        tokens = text.split()
+    else:
+        raise ValueError("Invalid mode. Use 'char' or 'word'")
+
+    sequence = list(ngrams(tokens, n))
+    if len(sequence) < 1:
+        return 0.0
+
+    counts = defaultdict(int)
+    for gram in sequence:
+        counts[gram] += 1
+
+    total = len(sequence)
+    entropy = 0.0
+    for count in counts.values():
+        p = count / total
+        entropy -= p * math.log2(p)
+
+    return entropy
+
+
 sample_string = "what is entropy after all? entropy is something mathy and weird. entropy entropy entropy"
 char_e = character_entropy(sample_string)
 word_e = word_entropy(sample_string)
@@ -51,3 +78,4 @@ print(f"Word entropy: {word_e:.2f}")
 print(f"TTR: {ttr:.2f}")
 print(f"Brunet: {brunet:.2f}")
 print(f"Honoré: {honore:.2f}")
+print(ngram_entropy(sample_string, n=3))

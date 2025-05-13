@@ -1,4 +1,5 @@
 import math
+import zlib
 from collections import Counter, defaultdict
 
 import torch
@@ -79,19 +80,27 @@ def perplexity(text: str) -> float:
     return perplexity
 
 
+def compression_ratio(text: str) -> float:
+    original_bytes = text.encode("utf-8")
+    compressed_bytes = zlib.compress(original_bytes, level=9)
+    return len(original_bytes) / len(compressed_bytes)
+
+
 sample_string = "what is entropy after all? entropy is something mathy and weird"
-# sample_string = "geoedtsjgr gkeybbbqzi sennjiwtfh lrymyxgtej sdzffdxyxw hcvkugmnlc eliyrnxccr gceoukydal xvqosxdidf vslnqumefw"
-char_e = character_entropy(sample_string)
-word_e = word_entropy(sample_string)
-ttr = type_token_ratio(sample_string)
-brunet = brunet_index(sample_string)
-honore = honore_statistic(sample_string)
-ngram = ngram_entropy(sample_string, n=3)
-perp = perplexity(sample_string)
-print(f"Character entropy: {char_e:.2f}")
-print(f"Word entropy: {word_e:.2f}")
-print(f"TTR: {ttr:.2f}")
-print(f"Brunet: {brunet:.2f}")
-print(f"Honoré: {honore:.2f}")
-print(f"n-gram entropy: {ngram:.2f}")
-print(f"Perplexity: {perp:.2f}")
+sample_string = "geoedtsjgr gkeybbbqzi sennjiwtfh lrymyxgtej sdzffdxyxw hcvkugmnlc"
+# char_e = character_entropy(sample_string)
+# word_e = word_entropy(sample_string)
+# ttr = type_token_ratio(sample_string)
+# brunet = brunet_index(sample_string)
+# honore = honore_statistic(sample_string)
+# ngram = ngram_entropy(sample_string, n=3)
+# perp = perplexity(sample_string)
+comp_ratio = compression_ratio(sample_string)
+# print(f"Character entropy: {char_e:.2f}")
+# print(f"Word entropy: {word_e:.2f}")
+# print(f"TTR: {ttr:.2f}")
+# print(f"Brunet: {brunet:.2f}")
+# print(f"Honoré: {honore:.2f}")
+# print(f"n-gram entropy: {ngram:.2f}")
+# print(f"Perplexity: {perp:.2f}")
+print(f"Compression ratio: {comp_ratio:.2f}")

@@ -1,7 +1,9 @@
 import math
 from collections import Counter, defaultdict
 
+import torch
 from nltk.util import ngrams
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
 def character_entropy(text: str) -> float:
@@ -35,11 +37,12 @@ def brunet_index(text: str) -> float:
 
 
 def honore_statistic(text: str) -> float:
+    eps = 1e-6
     words = text.split()
     word_counts = Counter(words)
     v1 = len([word for word, count in word_counts.items() if count == 1])
     v = len(word_counts)
-    return 100 * math.log(len(words)) / (1 - v1 / v)
+    return 100 * math.log(len(words)) / (1 - v1 / v + eps)
 
 
 def ngram_entropy(text, n=2, mode="char"):
@@ -67,15 +70,28 @@ def ngram_entropy(text, n=2, mode="char"):
     return entropy
 
 
-sample_string = "what is entropy after all? entropy is something mathy and weird. entropy entropy entropy"
+def perplexity(text: str) -> float:
+    tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-0.6B-Base")
+    model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-0.6B-Base")
+    inputs = tokenizer(text, return_tensors="pt")
+    loss = model(**inputs, labels=inputs["input_ids"]).loss
+    perplexity = torch.exp(loss).item()
+    return perplexity
+
+
+sample_string = "what is entropy after all? entropy is something mathy and weird"
+# sample_string = "geoedtsjgr gkeybbbqzi sennjiwtfh lrymyxgtej sdzffdxyxw hcvkugmnlc eliyrnxccr gceoukydal xvqosxdidf vslnqumefw"
 char_e = character_entropy(sample_string)
 word_e = word_entropy(sample_string)
 ttr = type_token_ratio(sample_string)
 brunet = brunet_index(sample_string)
 honore = honore_statistic(sample_string)
+ngram = ngram_entropy(sample_string, n=3)
+perp = perplexity(sample_string)
 print(f"Character entropy: {char_e:.2f}")
 print(f"Word entropy: {word_e:.2f}")
 print(f"TTR: {ttr:.2f}")
 print(f"Brunet: {brunet:.2f}")
 print(f"Honoré: {honore:.2f}")
-print(ngram_entropy(sample_string, n=3))
+print(f"n-gram entropy: {ngram:.2f}")
+print(f"Perplexity: {perp:.2f}")

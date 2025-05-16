@@ -73,13 +73,82 @@ def ngram_entropy(text, n=2, mode="char"):
     return entropy
 
 
-def perplexity(text: str) -> float:
+def _create_overlapping_chunks(
+    text: str, chunk_size: int = 512, overlap: int = 50
+) -> list[str]:
+    """Split text into overlapping chunks.
+
+    Args:
+        text: Input text to split
+        chunk_size: Maximum size of each chunk in characters
+        overlap: Number of characters to overlap between chunks
+
+    Returns:
+        List of text chunks with overlap
+    """
+    if len(text) <= chunk_size:
+        return [text]
+
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = min(start + chunk_size, len(text))
+
+        if end < len(text):
+            last_space = text.rfind(" ", start, end)
+            if last_space != -1:
+                end = last_space + 1
+
+        chunk = text[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+
+        if end == len(text):
+            break
+
+        start += max(1, chunk_size - overlap)
+
+        if len(text) - start < chunk_size // 2:
+            chunks.append(text[start:].strip())
+            break
+
+    return chunks
+
+
+def perplexity(text: str, chunk_size: int = 512, overlap: int = 50) -> float:
+    """Calculate perplexity of text by processing it in overlapping chunks.
+
+    Args:
+        text: Input text
+        chunk_size: Maximum size of each chunk in characters
+        overlap: Number of characters to overlap between chunks
+
+    Returns:
+        Average perplexity across all chunks
+    """
     tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3-0.6B-Base")
     model = AutoModelForCausalLM.from_pretrained("Qwen/Qwen3-0.6B-Base")
-    inputs = tokenizer(text, return_tensors="pt")
-    loss = model(**inputs, labels=inputs["input_ids"]).loss
-    perplexity = torch.exp(loss).item()
-    return perplexity
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    chunks = _create_overlapping_chunks(text, chunk_size, overlap)
+    total_perplexity = 0.0
+
+    for chunk in chunks:
+        if not chunk.strip():
+            continue
+        inputs = tokenizer(chunk, return_tensors="pt")
+        inputs = {k: v.to(device) for k, v in inputs.items()}
+
+        with torch.no_grad():
+            loss = model(**inputs, labels=inputs["input_ids"]).loss
+            chunk_perplexity = torch.exp(loss).item()
+            total_perplexity += chunk_perplexity
+
+    # Return average perplexity across all chunks
+    return total_perplexity / len(chunks)
 
 
 def compression_ratio(text: str) -> float:

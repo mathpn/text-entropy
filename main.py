@@ -1,10 +1,12 @@
+import argparse
 import math
 import zlib
 from collections import Counter, defaultdict
 
 import torch
 from nltk.util import ngrams
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers.models.auto.modeling_auto import AutoModelForCausalLM
+from transformers.models.auto.tokenization_auto import AutoTokenizer
 
 
 def character_entropy(text: str) -> float:
@@ -86,21 +88,24 @@ def compression_ratio(text: str) -> float:
     return len(original_bytes) / len(compressed_bytes)
 
 
-sample_string = "what is entropy after all? entropy is something mathy and weird"
-sample_string = "geoedtsjgr gkeybbbqzi sennjiwtfh lrymyxgtej sdzffdxyxw hcvkugmnlc"
-# char_e = character_entropy(sample_string)
-# word_e = word_entropy(sample_string)
-# ttr = type_token_ratio(sample_string)
-# brunet = brunet_index(sample_string)
-# honore = honore_statistic(sample_string)
-# ngram = ngram_entropy(sample_string, n=3)
-# perp = perplexity(sample_string)
-comp_ratio = compression_ratio(sample_string)
-# print(f"Character entropy: {char_e:.2f}")
-# print(f"Word entropy: {word_e:.2f}")
-# print(f"TTR: {ttr:.2f}")
-# print(f"Brunet: {brunet:.2f}")
-# print(f"Honoré: {honore:.2f}")
-# print(f"n-gram entropy: {ngram:.2f}")
-# print(f"Perplexity: {perp:.2f}")
-print(f"Compression ratio: {comp_ratio:.2f}")
+def main():
+    parser = argparse.ArgumentParser(description="Calculate text complexity metrics")
+    parser.add_argument("input_file", help="Path to the input text file")
+    args = parser.parse_args()
+
+    with open(args.input_file, "r", encoding="utf-8") as f:
+        text = f.read()
+
+    print(f"Character Entropy: {character_entropy(text):.4f}")
+    print(f"Word Entropy: {word_entropy(text):.4f}")
+    print(f"Type-Token Ratio: {type_token_ratio(text):.4f}")
+    print(f"Brunet Index: {brunet_index(text):.4f}")
+    print(f"Honore Statistic: {honore_statistic(text):.4f}")
+    print(f"Character Bigram Entropy: {ngram_entropy(text, n=2, mode='char'):.4f}")
+    print(f"Word Bigram Entropy: {ngram_entropy(text, n=2, mode='word'):.4f}")
+    print(f"Compression Ratio: {compression_ratio(text):.4f}")
+    print(f"Perplexity: {perplexity(text):.4f}")
+
+
+if __name__ == "__main__":
+    main()

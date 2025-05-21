@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Token Perplexity Visualizer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+
+      .container {
+        background-color: white;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
+      }
+
+      .input-section {
+        margin-bottom: 30px;
+      }
+
+      textarea {
+        width: 100%;
+        min-height: 120px;
+        padding: 15px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+        font-family: inherit;
+        resize: vertical;
+        box-sizing: border-box;
+      }
+
+      textarea:focus {
+        outline: none;
+        border-color: #007bff;
+      }
+
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 15px;
+        transition: background-color 0.3s;
+      }
+
+      button:hover:not(:disabled) {
+        background-color: #0056b3;
+      }
+
+      button:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        text-align: center;
+        color: #666;
+        margin: 20px 0;
+      }
+
+      .results {
+        margin-top: 30px;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+      }
+
+      .token {
+        display: inline-block;
+        padding: 2px 4px;
+        margin: 1px;
+        border-radius: 3px;
+        font-family: monospace;
+        font-size: 14px;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .token:hover {
+        transform: scale(1.1);
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      }
+
+      .legend {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: white;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+      }
+
+      .legend h3 {
+        margin-top: 0;
+        color: #333;
+      }
+
+      .legend-item {
+        display: inline-block;
+        margin: 5px 15px 5px 0;
+        white-space: nowrap;
+      }
+
+      .legend-color {
+        display: inline-block;
+        width: 20px;
+        height: 15px;
+        border-radius: 3px;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      .error {
+        color: #dc3545;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        padding: 15px;
+        border-radius: 6px;
+        margin-top: 15px;
+      }
+
+      .model-info {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Token Perplexity Visualizer</h1>
+
+      <div class="model-info">
+        Using: GPT-2 base model via Hugging Face transformers.js
+      </div>
+
+      <div class="input-section">
+        <textarea
+          id="textInput"
+          placeholder="Enter your text here to analyze token perplexity..."
+        >
+The quick brown fox jumps over the lazy dog.</textarea
+        >
+        <br />
+        <button id="analyzeBtn">Analyze Perplexity</button>
+      </div>
+
+      <div id="loading" class="loading" style="display: none">
+        Loading model and analyzing text...
+      </div>
+
+      <div id="error" class="error" style="display: none"></div>
+
+      <div id="results" class="results" style="display: none">
+        <h3>Results:</h3>
+        <div id="tokenDisplay"></div>
+        <div class="legend">
+          <h3>Perplexity Legend:</h3>
+          <div class="legend-item">
+            <span class="legend-color" style="background-color: #4caf50"></span>
+            Low (1-3)
+          </div>
+          <div class="legend-item">
+            <span class="legend-color" style="background-color: #ffeb3b"></span>
+            Medium (3-10)
+          </div>
+          <div class="legend-item">
+            <span class="legend-color" style="background-color: #ff9800"></span>
+            High (10-50)
+          </div>
+          <div class="legend-item">
+            <span class="legend-color" style="background-color: #f44336"></span>
+            Very High (50+)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import {
+        pipeline,
+        AutoTokenizer,
+        AutoModelForCausalLM,
+        env,
+      } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
+
+      // Enable model caching to localStorage
+      env.allowLocalModels = false;
+      env.allowRemoteModels = true;
+      env.useBrowserCache = true;
+
+      let model = null;
+      let tokenizer = null;
+
+      // Initialize the model when the page loads
+      async function initializeModel() {
+        try {
+          console.log("Loading model...");
+          // Check if model is cached
+          const cacheKey = "hf_model_HuggingFaceTB/SmolLM2-135M-Instruct";
+          const cachedTimestamp = localStorage.getItem(cacheKey + "_timestamp");
+          const now = Date.now();
+          const oneWeek = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
+
+          if (cachedTimestamp && now - parseInt(cachedTimestamp) < oneWeek) {
+            console.log("Using cached model...");
+          } else {
+            console.log("Downloading model (will be cached for future use)...");
+            localStorage.setItem(cacheKey + "_timestamp", now.toString());
+          }
+
+          tokenizer = await AutoTokenizer.from_pretrained(
+            "HuggingFaceTB/SmolLM2-135M-Instruct",
+            // { device: "webgpu" },
+          );
+          model = await AutoModelForCausalLM.from_pretrained(
+            "HuggingFaceTB/SmolLM2-135M-Instruct",
+            // { device: "webgpu" },
+          );
+          console.log(model);
+          console.log(model.device);
+          console.log("Model loaded successfully");
+        } catch (error) {
+          console.error("Error loading model:", error);
+          showError(
+            "Failed to load the model. Please refresh the page and try again.",
+          );
+        }
+      }
+
+      function getColorForPerplexity(perplexity) {
+        if (perplexity < 3) {
+          return "#4CAF50"; // Green for low perplexity
+        } else if (perplexity < 10) {
+          return "#FFEB3B"; // Yellow for medium perplexity
+        } else if (perplexity < 50) {
+          return "#FF9800"; // Orange for high perplexity
+        } else {
+          return "#F44336"; // Red for very high perplexity
+        }
+      }
+
+      function showError(message) {
+        const errorDiv = document.getElementById("error");
+        errorDiv.textContent = message;
+        errorDiv.style.display = "block";
+      }
+
+      function hideError() {
+        document.getElementById("error").style.display = "none";
+      }
+
+      async function calculatePerplexity(text) {
+        if (!model || !tokenizer) {
+          throw new Error("Model not loaded");
+        }
+
+        // Tokenize the text
+        const tokens = await tokenizer(text);
+        const inputIds = tokens.input_ids.data;
+
+        const perplexities = [];
+        const tokenStrings = [];
+
+        // Calculate perplexity for each token position (starting from the second token)
+        for (let i = 1; i < inputIds.length && i < 50; i++) {
+          // Limit to 50 tokens for performance
+          try {
+            console.log(i);
+            // Get the context (all tokens up to current position)
+            const seqLength = i;
+            const target = inputIds[i];
+
+            // Create input tensors for the model
+            const tokensBatch = {
+              input_ids: tokens.input_ids.slice([0, 1], [0, i]),
+              attention_mask: tokens.attention_mask.slice([0, 1], [0, i]),
+            };
+
+            // Get model predictions for the context
+            const outputs = await model(tokensBatch);
+
+            // Get logits for the last position (prediction for next token)
+            const logits = outputs.logits;
+            const vocabSize = model.config.vocab_size;
+            const lastTokenLogits = logits.data.slice(
+              (seqLength - 1) * vocabSize,
+              seqLength * vocabSize,
+            );
+
+            // Calculate probabilities using softmax
+            const maxLogit = lastTokenLogits.reduce(
+              (a, b) => Math.max(a, b),
+              -Infinity,
+            );
+            // const maxLogit = Math.max(...lastTokenLogits);
+            const expLogits = lastTokenLogits.map((l) =>
+              Math.exp(l - maxLogit),
+            );
+            const sumExp = expLogits.reduce((a, b) => a + b, 0);
+
+            // Get probability of the actual target token
+            const targetProb = expLogits[target] / sumExp || 1e-10; // Avoid zero probability
+
+            // Calculate perplexity (reciprocal of probability)
+            const perplexity = 1 / targetProb;
+
+            // Get the token string
+            const tokenString = tokenizer.decode([target]);
+
+            perplexities.push(Math.min(perplexity, 1000)); // Cap at 1000 for display
+            tokenStrings.push(tokenString);
+          } catch (error) {
+            console.warn(
+              "Error calculating perplexity for token",
+              i,
+              ":",
+              error,
+            );
+            // Use a default high perplexity if calculation fails
+            perplexities.push(100);
+            tokenStrings.push(tokenizer.decode([inputIds[i]]));
+          }
+        }
+
+        return { tokens: tokenStrings, perplexities };
+      }
+
+      async function analyzeText() {
+        const textInput = document.getElementById("textInput");
+        const text = textInput.value.trim();
+
+        if (!text) {
+          showError("Please enter some text to analyze.");
+          return;
+        }
+
+        hideError();
+
+        // Show loading state
+        document.getElementById("loading").style.display = "block";
+        document.getElementById("results").style.display = "none";
+        document.getElementById("analyzeBtn").disabled = true;
+
+        try {
+          // Wait for model to be loaded if it isn't already
+          if (!model) {
+            await initializeModel();
+          }
+
+          const { tokens, perplexities } = await calculatePerplexity(text);
+
+          // Display results
+          displayResults(tokens, perplexities);
+        } catch (error) {
+          console.error("Error analyzing text:", error);
+          showError("Error analyzing text: " + error.message);
+        } finally {
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("analyzeBtn").disabled = false;
+        }
+      }
+
+      function displayResults(tokens, perplexities) {
+        const tokenDisplay = document.getElementById("tokenDisplay");
+        tokenDisplay.innerHTML = "";
+
+        tokens.forEach((token, index) => {
+          const perplexity = perplexities[index];
+          const span = document.createElement("span");
+          span.className = "token";
+          span.textContent = token;
+          span.style.backgroundColor = getColorForPerplexity(perplexity);
+          span.style.color = perplexity > 25 ? "white" : "black";
+          span.title = `Token: "${token}"\nPerplexity: ${perplexity.toFixed(
+            2,
+          )}`;
+
+          tokenDisplay.appendChild(span);
+        });
+
+        document.getElementById("results").style.display = "block";
+      }
+
+      // Set up event listeners when DOM is loaded
+      window.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("analyzeBtn")
+          .addEventListener("click", analyzeText);
+        // Start loading the model immediately
+        initializeModel();
+      });
+    </script>
+  </body>
+</html>

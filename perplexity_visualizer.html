@@ -224,9 +224,9 @@
       }
 
       function getColorForPerplexity(perplexity) {
-        const normalized = Math.min(perplexity / 100, 1);
-        const r = 194 + Math.floor(61 * normalized);
-        const g = 194 + Math.floor(61 * (1 - normalized));
+        const normalized = Math.min(perplexity / 1000, 1);
+        const r = 194 + Math.floor(46 * normalized);
+        const g = 194 + Math.floor(46 * (1 - normalized));
         const b = 194;
         return `rgb(${r}, ${g}, ${b})`;
       }

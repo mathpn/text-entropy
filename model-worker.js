@@ -52,19 +52,19 @@ async function processBatch(batchInputs, startIdx) {
   for (let i = 0; i < batchInputs.length; i++) {
     const input = batchInputs[i];
     const target = input.target;
-    
+
     const outputs = await model(input);
     const logits = outputs.logits;
     const vocabSize = model.config.vocab_size;
     const lastTokenLogits = logits.data.slice(-vocabSize);
-    
+
     const maxLogit = Math.max(...lastTokenLogits);
     const expLogits = lastTokenLogits.map(l => Math.exp(l - maxLogit));
     const sumExp = expLogits.reduce((a, b) => a + b, 0);
-    
+
     const targetProb = expLogits[target] / sumExp || 1e-10;
     const perplexity = Math.min(1 / targetProb, 1000);
-    
+
     results.push({
       index: startIdx + i,
       perplexity,
@@ -74,9 +74,9 @@ async function processBatch(batchInputs, startIdx) {
   return results;
 }
 
-self.onmessage = async function(e) {
+self.onmessage = async function (e) {
   const { type, data } = e.data;
-  
+
   switch (type) {
     case 'init':
       await initializeModel();

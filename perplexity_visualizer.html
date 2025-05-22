@@ -260,7 +260,8 @@
 
         span.style.backgroundColor = getColorForPerplexity(perplexity);
         span.style.color = "black";
-        span.title = `Token: "${token}"\nPerplexity: ${perplexity.toFixed(2)}`;
+        const displayToken = token.replace(/\s/g, '␣');
+        span.title = `Token: "${displayToken}"\nPerplexity: ${perplexity.toFixed(2)}`;
 
         container.appendChild(span);
         document.getElementById("results").style.display = "block";
@@ -324,27 +325,6 @@
           document.getElementById("loading").style.display = "none";
           document.getElementById("analyzeBtn").disabled = false;
         }
-      }
-
-      function displayResults(tokens, perplexities) {
-        const tokenDisplay = document.getElementById("tokenDisplay");
-        tokenDisplay.innerHTML = "";
-
-        tokens.forEach((token, index) => {
-          const perplexity = perplexities[index];
-          const span = document.createElement("span");
-          span.className = "token";
-          span.textContent = token;
-          span.style.backgroundColor = getColorForPerplexity(perplexity);
-          span.style.color = perplexity > 25 ? "white" : "black";
-          span.title = `Token: "${token}"\nPerplexity: ${perplexity.toFixed(
-            2,
-          )}`;
-
-          tokenDisplay.appendChild(span);
-        });
-
-        document.getElementById("results").style.display = "block";
       }
 
       // Set up event listeners when DOM is loaded

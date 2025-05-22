@@ -131,6 +131,21 @@
         color: #666;
         margin-bottom: 15px;
       }
+
+      .progress-bar {
+        width: 100%;
+        height: 4px;
+        background-color: #e9ecef;
+        border-radius: 2px;
+        margin-top: 10px;
+        overflow: hidden;
+      }
+
+      .progress-bar-fill {
+        height: 100%;
+        background-color: #007bff;
+        transition: width 0.3s ease;
+      }
     </style>
   </head>
   <body>
@@ -145,11 +160,12 @@
         <textarea
           id="textInput"
           placeholder="Enter your text here to analyze token perplexity..."
-        >
-The quick brown fox jumps over the lazy dog.</textarea
-        >
+        >The quick brown fox jumps over the lazy dog.</textarea>
         <br />
         <button id="analyzeBtn">Analyze Perplexity</button>
+        <div class="progress-bar" style="display: none;">
+          <div class="progress-bar-fill" style="width: 0%"></div>
+        </div>
       </div>
 
       <div id="loading" class="loading" style="display: none">
@@ -177,40 +193,33 @@ The quick brown fox jumps over the lazy dog.</textarea
       env.allowRemoteModels = true;
       env.useBrowserCache = true;
 
-      let model = null;
-      let tokenizer = null;
+      let worker = null;
 
       // Initialize the model when the page loads
       async function initializeModel() {
         try {
           console.log("Loading model...");
-          // Check if model is cached
-          const cacheKey = "hf_model_HuggingFaceTB/SmolLM2-135M-Instruct";
-          const cachedTimestamp = localStorage.getItem(cacheKey + "_timestamp");
-          const now = Date.now();
-          const oneWeek = 7 * 24 * 60 * 60 * 1000; // 1 week in milliseconds
+          worker = new Worker('model-worker.js', { type: 'module' });
+          
+          worker.onmessage = function(e) {
+            const { type, results, error } = e.data;
+            
+            if (type === 'modelReady') {
+              console.log("Model loaded successfully");
+              document.getElementById("analyzeBtn").disabled = false;
+            } else if (type === 'results') {
+              results.forEach(result => {
+                displayTokenResult(result.tokenString, result.perplexity);
+              });
+            } else if (type === 'error') {
+              showError(error);
+            }
+          };
 
-          if (cachedTimestamp && now - parseInt(cachedTimestamp) < oneWeek) {
-            console.log("Using cached model...");
-          } else {
-            console.log("Downloading model (will be cached for future use)...");
-            localStorage.setItem(cacheKey + "_timestamp", now.toString());
-          }
-
-          tokenizer = await AutoTokenizer.from_pretrained(
-            "HuggingFaceTB/SmolLM2-135M-Instruct",
-            // { device: "webgpu" },
-          );
-          model = await AutoModelForCausalLM.from_pretrained(
-            "HuggingFaceTB/SmolLM2-135M-Instruct",
-            // { device: "webgpu" },
-          );
-          console.log("Model loaded successfully");
+          worker.postMessage({ type: 'init' });
         } catch (error) {
           console.error("Error loading model:", error);
-          showError(
-            "Failed to load the model. Please refresh the page and try again.",
-          );
+          showError("Failed to load the model. Please refresh the page and try again.");
         }
       }
 
@@ -258,96 +267,28 @@ The quick brown fox jumps over the lazy dog.</textarea
       }
 
       async function calculatePerplexity(text) {
-        if (!model || !tokenizer) {
+        if (!worker) {
           throw new Error("Model not loaded");
         }
 
-        // Configuration
-        const CONTEXT_WINDOW = 10; // Number of previous tokens to use as context
-        const BATCH_SIZE = 20; // Number of tokens to process at once
-        const MAX_TOKENS = 500; // Maximum number of tokens to process
+        const CONTEXT_WINDOW = 10;
+        const BATCH_SIZE = 20;
+        const MAX_TOKENS = 500;
 
-        // Tokenize the text
-        const tokens = await tokenizer(text);
-        const inputIds = tokens.input_ids.data;
-        const numTokens = Math.min(inputIds.length, MAX_TOKENS);
+        const progressBar = document.querySelector('.progress-bar');
+        const progressFill = document.querySelector('.progress-bar-fill');
+        progressBar.style.display = 'block';
 
-        const perplexities = [];
-        const tokenStrings = [];
-
-        // Process tokens in batches
-        for (let startIdx = 0; startIdx < numTokens; startIdx += BATCH_SIZE) {
-          const endIdx = Math.min(startIdx + BATCH_SIZE, numTokens);
-          const batchPerplexities = [];
-          const batchTokens = [];
-
-          // Create batch input tensors
-          const batchInputs = [];
-          for (let i = startIdx; i < endIdx; i++) {
-            const contextStart = Math.max(0, i - CONTEXT_WINDOW);
-            batchInputs.push({
-              input_ids: tokens.input_ids.slice([0, 1], [contextStart, i]),
-              attention_mask: tokens.attention_mask.slice(
-                [0, 1],
-                [contextStart, i],
-              ),
-            });
+        // Send the text to the worker for processing
+        worker.postMessage({
+          type: 'process',
+          data: {
+            text,
+            contextWindow: CONTEXT_WINDOW,
+            batchSize: BATCH_SIZE,
+            maxTokens: MAX_TOKENS
           }
-
-          try {
-            // Process all contexts in the batch
-            const batchPromises = batchInputs.map(async (input, idx) => {
-              const i = startIdx + idx;
-              const target = inputIds[i];
-
-              // Get model predictions
-              const outputs = await model(input);
-              const logits = outputs.logits;
-              const vocabSize = model.config.vocab_size;
-              const lastTokenLogits = logits.data.slice(-vocabSize);
-
-              // Calculate probabilities using softmax
-              const maxLogit = Math.max(...lastTokenLogits);
-              const expLogits = lastTokenLogits.map((l) =>
-                Math.exp(l - maxLogit),
-              );
-              const sumExp = expLogits.reduce((a, b) => a + b, 0);
-
-              // Get probability of the target token
-              const targetProb = expLogits[target] / sumExp || 1e-10;
-
-              // Calculate perplexity
-              const perplexity = Math.min(1 / targetProb, 1000);
-              const tokenString = tokenizer.decode([target]);
-
-              return { perplexity, tokenString };
-            });
-
-            // Wait for all batch items to complete
-            const results = await Promise.all(batchPromises);
-
-            // Process and display results
-            for (const result of results) {
-              displayTokenResult(result.tokenString, result.perplexity);
-              perplexities.push(result.perplexity);
-              tokenStrings.push(result.tokenString);
-            }
-
-            // Add a small delay between batches to keep UI responsive
-            await new Promise((resolve) => setTimeout(resolve, 0));
-          } catch (error) {
-            console.warn("Error processing batch:", error);
-            // Fill in default values for the failed batch
-            for (let i = startIdx; i < endIdx; i++) {
-              const tokenString = tokenizer.decode([inputIds[i]]);
-              perplexities.push(100);
-              tokenStrings.push(tokenString);
-              displayTokenResult(tokenString, 100);
-            }
-          }
-        }
-
-        return { tokens: tokenStrings, perplexities };
+        });
       }
 
       async function analyzeText() {
@@ -371,7 +312,7 @@ The quick brown fox jumps over the lazy dog.</textarea
 
         try {
           // Wait for model to be loaded if it isn't already
-          if (!model) {
+          if (!worker) {
             await initializeModel();
           }
 
@@ -408,10 +349,8 @@ The quick brown fox jumps over the lazy dog.</textarea
 
       // Set up event listeners when DOM is loaded
       window.addEventListener("DOMContentLoaded", () => {
-        document
-          .getElementById("analyzeBtn")
-          .addEventListener("click", analyzeText);
-        // Start loading the model immediately
+        document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
+        document.getElementById("analyzeBtn").disabled = true;
         initializeModel();
       });
     </script>

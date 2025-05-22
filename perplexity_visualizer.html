@@ -82,18 +82,36 @@
         border: 1px solid #e9ecef;
       }
 
+      .token-container {
+        display: inline;
+        width: 100%;
+        line-height: 1.5;
+      }
+
       .token {
-        display: inline-block;
-        padding: 2px 4px;
+        display: inline;
+        padding: 0;
         margin: 0;
         font-family: monospace;
         font-size: 14px;
         cursor: pointer;
-        transition: transform 0.2s;
+        white-space: pre; /* Preserve spaces */
+        position: relative;
       }
 
-      .token:hover {
-        transform: scale(1.1);
+      .token:hover::after {
+        content: attr(title);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: pre-wrap;
+        z-index: 10;
       }
 
       .error {
@@ -195,9 +213,9 @@ The quick brown fox jumps over the lazy dog.</textarea
 
       function getColorForPerplexity(perplexity) {
         const normalized = Math.min(perplexity / 100, 1);
-        const r = Math.floor(255);
-        const g = Math.floor(255 * (1 - normalized));
-        const b = 20;
+        const r = 194 + Math.floor(61 * normalized);
+        const g = 194 + Math.floor(61 * (1 - normalized));
+        const b = 194;
         return `rgb(${r}, ${g}, ${b})`;
       }
 
@@ -213,26 +231,26 @@ The quick brown fox jumps over the lazy dog.</textarea
 
       function displayTokenResult(token, perplexity) {
         const tokenDisplay = document.getElementById("tokenDisplay");
-        const span = document.createElement("span");
-        span.className = "token";
-        span.textContent = token;
-        span.style.backgroundColor = getColorForPerplexity(perplexity);
-        span.style.color = perplexity > 25 ? "white" : "black";
-        span.title = `Token: "${token}"\nPerplexity: ${perplexity.toFixed(2)}`;
 
-        // Create a wrapper div for each line
-        let lineWrapper = tokenDisplay.lastElementChild;
-        if (!lineWrapper || lineWrapper.childElementCount >= 10) {
-          // Assuming 10 tokens per line
-          lineWrapper = document.createElement("div");
-          lineWrapper.style.display = "flex";
-          lineWrapper.style.borderRadius = "3px";
-          lineWrapper.style.overflow = "hidden";
-          lineWrapper.style.marginBottom = "2px";
-          tokenDisplay.appendChild(lineWrapper);
+        // Create token container if it doesn't exist
+        if (!tokenDisplay.firstElementChild) {
+          const container = document.createElement("div");
+          container.className = "token-container";
+          tokenDisplay.appendChild(container);
         }
 
-        lineWrapper.appendChild(span);
+        const container = tokenDisplay.firstElementChild;
+        const span = document.createElement("span");
+        span.className = "token";
+
+        // Handle token display, preserving exact spacing
+        span.textContent = token;
+
+        span.style.backgroundColor = getColorForPerplexity(perplexity);
+        span.style.color = "black";
+        span.title = `Token: "${token}"\nPerplexity: ${perplexity.toFixed(2)}`;
+
+        container.appendChild(span);
         document.getElementById("results").style.display = "block";
       }
 

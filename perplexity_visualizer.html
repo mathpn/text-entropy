@@ -83,9 +83,11 @@
       }
 
       .token-container {
-        display: inline;
+        display: block;
         width: 100%;
         line-height: 1.5;
+        white-space: normal;
+        word-wrap: break-word;
       }
 
       .token {
@@ -95,8 +97,9 @@
         font-family: monospace;
         font-size: 14px;
         cursor: pointer;
-        white-space: pre; /* Preserve spaces */
+        white-space: pre-wrap;
         position: relative;
+        overflow-wrap: break-word;
       }
 
       .token:hover::after {

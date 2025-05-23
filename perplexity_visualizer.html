@@ -241,9 +241,9 @@
 
       <div id="error" class="error" style="display: none"></div>
 
-      <div id="results" class="results" style="display: none">
-        <h3>Results:</h3>
-        <div id="tokenDisplay"></div>
+        <div id="results" class="results" style="display: none">
+          <h3>Results:</h3>
+          <div id="tokenDisplay"></div>
           <div id="avgPerplexity" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e9ecef; font-weight: bold;"></div>
       </div>
     </div>
@@ -364,8 +364,8 @@
             }
           });
         } else {
-        const span = document.createElement("span");
-        span.className = "token";
+          const span = document.createElement("span");
+          span.className = "token";
 
           // Create content container
           const content = document.createElement("span");
@@ -380,12 +380,10 @@
           tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
 
           span.appendChild(tooltip);
-        span.style.backgroundColor = getColorForPerplexity(perplexity);
-        span.style.color = "black";
-        const displayToken = token.replace(/\s/g, '␣');
-        span.title = `Token: "${displayToken}"\nPerplexity: ${perplexity.toFixed(2)}`;
+          span.style.backgroundColor = getColorForPerplexity(perplexity);
+          span.style.color = "black";
 
-        container.appendChild(span);
+          container.appendChild(span);
         }
         
         document.getElementById("results").style.display = "block";
@@ -432,9 +430,9 @@
         const tokenDisplay = document.getElementById("tokenDisplay");
         tokenDisplay.innerHTML = "";
         const textInput = document.getElementById("textInput");
-        const text = textInput.value.trim();
+        const text = textInput.value;
 
-        if (!text) {
+        if (!text.trim()) {
           showError("Please enter some text to analyze.");
           return;
         }

@@ -97,7 +97,6 @@
         font-family: monospace;
         font-size: 14px;
         cursor: pointer;
-        white-space: pre-wrap;
         position: relative;
       }
 
@@ -230,6 +229,7 @@
         >The quick brown fox jumps over the lazy dog.</textarea>
         <br />
         <button id="analyzeBtn">Analyze Perplexity</button>
+        <span id="modelLoadingNotice" class="loading" style="display: inline-block; margin-left: 18px; font-size: 15px; color: #007bff;">Loading model...</span>
         <div class="progress-bar" style="display: none;">
           <div class="progress-bar-fill" style="width: 0%"></div>
         </div>
@@ -244,6 +244,7 @@
       <div id="results" class="results" style="display: none">
         <h3>Results:</h3>
         <div id="tokenDisplay"></div>
+          <div id="avgPerplexity" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e9ecef; font-weight: bold;"></div>
       </div>
     </div>
 
@@ -269,18 +270,34 @@
           worker = new Worker('model-worker.js', { type: 'module' });
           
           worker.onmessage = function(e) {
-            const { type, results, error } = e.data;
+            const { type, results, error, progress } = e.data;
             
             if (type === 'modelReady') {
               console.log("Model loaded successfully");
               document.getElementById("analyzeBtn").disabled = false;
+              document.getElementById("modelLoadingNotice").style.display = 'none';
             } else if (type === 'results') {
               results.forEach(result => {
-                displayTokenResult(result.tokenString, result.perplexity);
+                displayTokenResult(result.tokenString, result.perplexity, result);
               });
+            } else if (type === 'averagePerplexity') {
+              document.getElementById('avgPerplexity').textContent = `Average Perplexity: ${e.data.avgPerplexity.toFixed(2)}`;
             } else if (type === 'error') {
               showError(error);
+              document.getElementById("loading").style.display = "none";
+              document.getElementById("analyzeBtn").disabled = false;
+              document.getElementById("modelLoadingNotice").style.display = 'none';
+              document.querySelector('.progress-bar').style.display = 'none';
+            } else if (type === 'progress') {
+              updateProgressBar(progress);
             }
+          };
+
+          worker.onerror = function(error) {
+            showError("Worker error: " + error.message);
+            document.getElementById("loading").style.display = "none";
+            document.getElementById("analyzeBtn").disabled = false;
+            document.querySelector('.progress-bar').style.display = 'none';
           };
 
           worker.postMessage({ type: 'init' });
@@ -308,7 +325,7 @@
         document.getElementById("error").style.display = "none";
       }
 
-      function displayTokenResult(token, perplexity) {
+      function displayTokenResult(token, perplexity, result) {
         const tokenDisplay = document.getElementById("tokenDisplay");
 
         // Create token container if it doesn't exist
@@ -319,19 +336,69 @@
         }
 
         const container = tokenDisplay.firstElementChild;
+        
+        // Handle tokens with embedded newlines: split into segments
+        if (token.includes('\n')) {
+          const segments = token.split('\n');
+          segments.forEach((seg, idx) => {
+            if (seg.length) {
+              const span = document.createElement('span');
+              span.className = 'token';
+              const content = document.createElement('span');
+              content.className = 'token-content';
+              content.textContent = seg;
+              span.appendChild(content);
+
+              const tooltip = document.createElement('div');
+              tooltip.className = 'token-tooltip';
+              const displayToken = token.replace(/\s/g, '␣').replace(/\n/g, '↵');
+              tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
+              span.appendChild(tooltip);
+
+              span.style.backgroundColor = getColorForPerplexity(perplexity);
+              span.style.color = 'black';
+              container.appendChild(span);
+            }
+            if (idx < segments.length - 1) {
+              container.appendChild(document.createElement('br'));
+            }
+          });
+        } else {
         const span = document.createElement("span");
         span.className = "token";
 
-        // Handle token display, preserving exact spacing
-        span.textContent = token;
+          // Create content container
+          const content = document.createElement("span");
+          content.className = "token-content";
+          content.textContent = token;
+          span.appendChild(content);
 
+          // Create tooltip div
+          const tooltip = document.createElement("div");
+          tooltip.className = "token-tooltip";
+          const displayToken = token.replace(/\s/g, '␣');
+          tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
+
+          span.appendChild(tooltip);
         span.style.backgroundColor = getColorForPerplexity(perplexity);
         span.style.color = "black";
         const displayToken = token.replace(/\s/g, '␣');
         span.title = `Token: "${displayToken}"\nPerplexity: ${perplexity.toFixed(2)}`;
 
         container.appendChild(span);
+        }
+        
         document.getElementById("results").style.display = "block";
+      }
+
+      function updateProgressBar(progress) {
+        // Works in all browsers, including Firefox
+        const progressBar = document.querySelector('.progress-bar');
+        const progressFill = document.querySelector('.progress-bar-fill');
+        progressBar.style.display = 'block';
+        // Force reflow
+        progressFill.offsetWidth;
+        progressFill.style.width = `${progress}%`;
       }
 
       async function calculatePerplexity(text) {
@@ -399,6 +466,7 @@
       window.addEventListener("DOMContentLoaded", () => {
         document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
         document.getElementById("analyzeBtn").disabled = true;
+        document.getElementById("modelLoadingNotice").style.display = 'inline-block';
         initializeModel();
       });
     </script>

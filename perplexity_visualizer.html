@@ -1,472 +1,475 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Token Perplexity Visualizer</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: 20px;
-        background-color: #f5f5f5;
-      }
 
-      .container {
-        background-color: white;
-        padding: 30px;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      }
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Token Perplexity Visualizer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
 
-      h1 {
-        text-align: center;
-        color: #333;
-        margin-bottom: 30px;
-      }
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    }
 
-      .input-section {
-        margin-bottom: 30px;
-      }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
 
-      textarea {
-        width: 100%;
-        min-height: 120px;
-        padding: 15px;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        font-size: 16px;
-        font-family: inherit;
-        resize: vertical;
-        box-sizing: border-box;
-      }
+    .input-section {
+      margin-bottom: 30px;
+    }
 
-      textarea:focus {
-        outline: none;
-        border-color: #007bff;
-      }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 15px;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      font-family: inherit;
+      resize: vertical;
+      box-sizing: border-box;
+    }
 
-      button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 6px;
-        font-size: 16px;
-        cursor: pointer;
-        margin-top: 15px;
-        transition: background-color 0.3s;
-      }
+    textarea:focus {
+      outline: none;
+      border-color: #007bff;
+    }
 
-      button:hover:not(:disabled) {
-        background-color: #0056b3;
-      }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background-color 0.3s;
+    }
 
-      button:disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
-      }
+    button:hover:not(:disabled) {
+      background-color: #0056b3;
+    }
 
-      .loading {
-        text-align: center;
-        color: #666;
-        margin: 20px 0;
-      }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
 
-      .results {
-        margin-top: 30px;
-        padding: 20px;
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-      }
+    .loading {
+      text-align: center;
+      color: #666;
+      margin: 20px 0;
+    }
 
-      .token-container {
-        display: block;
-        width: 100%;
-        line-height: 1.5;
-        white-space: normal;
-        word-wrap: break-word;
-      }
+    .results {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
 
-      .token {
-        display: inline;
-        padding: 0;
-        margin: 0;
-        font-family: monospace;
-        font-size: 14px;
-        cursor: pointer;
-        position: relative;
-      }
+    .token-container {
+      display: block;
+      width: 100%;
+      line-height: 1.5;
+      white-space: normal;
+      word-wrap: break-word;
+    }
 
-      .token.newline {
-        display: block;
-        height: 1.2em;
-      }
+    .token {
+      display: inline;
+      padding: 0;
+      margin: 0;
+      font-family: monospace;
+      font-size: 14px;
+      cursor: pointer;
+      position: relative;
+    }
 
-      .token-content {
-        white-space: pre;
-        display: inline-block;
-        height: 1.2em;
-        vertical-align: text-bottom;
-      }
+    .token.newline {
+      display: block;
+      height: 1.2em;
+    }
 
-      .token-tooltip {
-        display: none;
-        position: absolute;
-        bottom: calc(100% + 5px);
-        left: 50%;
-        transform: translateX(-50%);
-        background: rgba(33, 37, 41, 0.95);
-        color: white;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        font-family: system-ui, -apple-system, sans-serif;
-        line-height: 1.4;
-        white-space: pre-wrap;
-        z-index: 1000;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        pointer-events: none;
-        max-width: 200px;
-        width: max-content;
-      }
+    .token-content {
+      white-space: pre;
+      display: inline-block;
+      height: 1.2em;
+      vertical-align: text-bottom;
+    }
 
-      .token-tooltip::after {
-        content: "";
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        border-width: 5px;
-        border-style: solid;
-        border-color: rgba(33, 37, 41, 0.95) transparent transparent transparent;
-      }
+    .token-tooltip {
+      display: none;
+      position: absolute;
+      bottom: calc(100% + 5px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(33, 37, 41, 0.95);
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      z-index: 1000;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      pointer-events: none;
+      max-width: 200px;
+      width: max-content;
+    }
 
-      .token:hover .token-tooltip {
-        display: block;
-      }
+    .token-tooltip::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 5px;
+      border-style: solid;
+      border-color: rgba(33, 37, 41, 0.95) transparent transparent transparent;
+    }
 
-      .error {
-        color: #dc3545;
-        background-color: #f8d7da;
-        border: 1px solid #f5c6cb;
-        padding: 15px;
-        border-radius: 6px;
-        margin-top: 15px;
-      }
+    .token:hover .token-tooltip {
+      display: block;
+    }
 
-      .model-info {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 15px;
-      }
+    .error {
+      color: #dc3545;
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      padding: 15px;
+      border-radius: 6px;
+      margin-top: 15px;
+    }
 
-      .progress-bar {
-        width: 100%;
-        height: 4px;
-        background-color: #e9ecef;
-        border-radius: 2px;
-        margin-top: 10px;
-        overflow: hidden;
-      }
+    .model-info {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 15px;
+    }
 
-      .progress-bar-fill {
-        height: 100%;
-        background-color: #007bff;
-        transition: width 0.3s ease;
-      }
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background-color: #e9ecef;
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
 
-      .legend {
-        margin: 20px 0;
-        padding: 15px;
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-      }
+    .progress-bar-fill {
+      height: 100%;
+      background-color: #007bff;
+      transition: width 0.3s ease;
+    }
 
-      .legend p {
-        margin: 0 0 10px 0;
-        font-weight: bold;
-      }
+    .legend {
+      margin: 20px 0;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      border: 1px solid #e9ecef;
+    }
 
-      .legend-gradient {
-        height: 20px;
-        border-radius: 4px;
-        background: linear-gradient(to right, rgb(194, 240, 194), rgb(240, 194, 194));
-        margin-bottom: 5px;
-      }
+    .legend p {
+      margin: 0 0 10px 0;
+      font-weight: bold;
+    }
 
-      .legend-labels {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12px;
-        color: #666;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Token Perplexity Visualizer</h1>
+    .legend-gradient {
+      height: 20px;
+      border-radius: 4px;
+      background: linear-gradient(to right, rgb(194, 240, 194), rgb(240, 194, 194));
+      margin-bottom: 5px;
+    }
 
-      <div class="model-info">
-        Using: SmolLM2-135M-Instruct via Hugging Face transformers.js
-      </div>
-      <div class="legend">
-        <p>Color scale:</p>
-        <div class="legend-gradient"></div>
-        <div class="legend-labels">
-          <span>Low perplexity</span>
-          <span>High perplexity</span>
-        </div>
-      </div>
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
 
-      <div class="input-section">
-        <textarea
-          id="textInput"
-          placeholder="Enter your text here to analyze token perplexity..."
-        >The quick brown fox jumps over the lazy dog.</textarea>
-        <br />
-        <button id="analyzeBtn">Analyze Perplexity</button>
-        <span id="modelLoadingNotice" class="loading" style="display: inline-block; margin-left: 18px; font-size: 15px; color: #007bff;">Loading model...</span>
-        <div class="progress-bar" style="display: none;">
-          <div class="progress-bar-fill" style="width: 0%"></div>
-        </div>
-      </div>
+<body>
+  <div class="container">
+    <h1>Token Perplexity Visualizer</h1>
 
-      <div id="loading" class="loading" style="display: none">
-        Loading model and analyzing text...
-      </div>
-
-      <div id="error" class="error" style="display: none"></div>
-
-        <div id="results" class="results" style="display: none">
-          <h3>Results:</h3>
-          <div id="tokenDisplay"></div>
-          <div id="perplexityDisplay" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e9ecef; font-weight: bold;"></div>
+    <div class="model-info">
+      Using: SmolLM2-135M-Instruct via Hugging Face transformers.js
+    </div>
+    <div class="legend">
+      <p>Color scale:</p>
+      <div class="legend-gradient"></div>
+      <div class="legend-labels">
+        <span>Low perplexity</span>
+        <span>High perplexity</span>
       </div>
     </div>
 
-    <script type="module">
-      import {
-        pipeline,
-        AutoTokenizer,
-        AutoModelForCausalLM,
-        env,
-      } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
+    <div class="input-section">
+      <textarea id="textInput"
+        placeholder="Enter your text here to analyze token perplexity...">The quick brown fox jumps over the lazy dog.</textarea>
+      <br />
+      <button id="analyzeBtn">Analyze Perplexity</button>
+      <span id="modelLoadingNotice" class="loading"
+        style="display: inline-block; margin-left: 18px; font-size: 15px; color: #007bff;">Loading model...</span>
+      <div class="progress-bar" style="display: none;">
+        <div class="progress-bar-fill" style="width: 0%"></div>
+      </div>
+    </div>
 
-      // Enable model caching to localStorage
-      env.allowLocalModels = false;
-      env.allowRemoteModels = true;
-      env.useBrowserCache = true;
+    <div id="loading" class="loading" style="display: none">
+      Loading model and analyzing text...
+    </div>
 
-      let worker = null;
+    <div id="error" class="error" style="display: none"></div>
 
-      // Initialize the model when the page loads
-      async function initializeModel() {
-        try {
-          console.log("Loading model...");
-          worker = new Worker('model-worker.js', { type: 'module' });
-          
-          worker.onmessage = function(e) {
-            const { type, results, error, progress } = e.data;
-            
-            if (type === 'modelReady') {
-              console.log("Model loaded successfully");
-              document.getElementById("analyzeBtn").disabled = false;
-              document.getElementById("modelLoadingNotice").style.display = 'none';
-            } else if (type === 'results') {
-              results.forEach(result => {
-                displayTokenResult(result.tokenString, result.perplexity, result);
-              });
-            } else if (type === 'perplexity') {
-              document.getElementById('perplexityDisplay').textContent = `Perplexity: ${e.data.perplexity.toFixed(2)}`;
-            } else if (type === 'error') {
-              showError(error);
-              document.getElementById("loading").style.display = "none";
-              document.getElementById("analyzeBtn").disabled = false;
-              document.getElementById("modelLoadingNotice").style.display = 'none';
-              document.querySelector('.progress-bar').style.display = 'none';
-            } else if (type === 'progress') {
-              updateProgressBar(progress);
-            }
-          };
+    <div id="results" class="results" style="display: none">
+      <h3>Results:</h3>
+      <div id="tokenDisplay"></div>
+      <div id="perplexityDisplay"
+        style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e9ecef; font-weight: bold;"></div>
+    </div>
+  </div>
 
-          worker.onerror = function(error) {
-            showError("Worker error: " + error.message);
+  <script type="module">
+    import {
+      pipeline,
+      AutoTokenizer,
+      AutoModelForCausalLM,
+      env,
+    } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
+
+    // Enable model caching to localStorage
+    env.allowLocalModels = false;
+    env.allowRemoteModels = true;
+    env.useBrowserCache = true;
+
+    let worker = null;
+
+    // Initialize the model when the page loads
+    async function initializeModel() {
+      try {
+        console.log("Loading model...");
+        worker = new Worker('model-worker.js', { type: 'module' });
+
+        worker.onmessage = function (e) {
+          const { type, results, error, progress } = e.data;
+
+          if (type === 'modelReady') {
+            console.log("Model loaded successfully");
+            document.getElementById("analyzeBtn").disabled = false;
+            document.getElementById("modelLoadingNotice").style.display = 'none';
+          } else if (type === 'results') {
+            results.forEach(result => {
+              displayTokenResult(result.tokenString, result.perplexity, result);
+            });
+          } else if (type === 'perplexity') {
+            document.getElementById('perplexityDisplay').textContent = `Perplexity: ${e.data.perplexity.toFixed(2)}`;
+          } else if (type === 'error') {
+            showError(error);
             document.getElementById("loading").style.display = "none";
             document.getElementById("analyzeBtn").disabled = false;
+            document.getElementById("modelLoadingNotice").style.display = 'none';
             document.querySelector('.progress-bar').style.display = 'none';
-          };
-
-          worker.postMessage({ type: 'init' });
-        } catch (error) {
-          console.error("Error loading model:", error);
-          showError("Failed to load the model. Please refresh the page and try again.");
-        }
-      }
-
-      function getColorForPerplexity(perplexity) {
-        const normalized = Math.min(perplexity / 1000, 1);
-        const r = 194 + Math.floor(46 * normalized);
-        const g = 194 + Math.floor(46 * (1 - normalized));
-        const b = 194;
-        return `rgb(${r}, ${g}, ${b})`;
-      }
-
-      function showError(message) {
-        const errorDiv = document.getElementById("error");
-        errorDiv.textContent = message;
-        errorDiv.style.display = "block";
-      }
-
-      function hideError() {
-        document.getElementById("error").style.display = "none";
-      }
-
-      function displayTokenResult(token, perplexity, result) {
-        const tokenDisplay = document.getElementById("tokenDisplay");
-
-        // Create token container if it doesn't exist
-        if (!tokenDisplay.firstElementChild) {
-          const container = document.createElement("div");
-          container.className = "token-container";
-          tokenDisplay.appendChild(container);
-        }
-
-        const container = tokenDisplay.firstElementChild;
-        
-        // Handle tokens with embedded newlines: split into segments
-        if (token.includes('\n')) {
-          const segments = token.split('\n');
-          segments.forEach((seg, idx) => {
-            if (seg.length) {
-              const span = document.createElement('span');
-              span.className = 'token';
-              const content = document.createElement('span');
-              content.className = 'token-content';
-              content.textContent = seg;
-              span.appendChild(content);
-
-              const tooltip = document.createElement('div');
-              tooltip.className = 'token-tooltip';
-              const displayToken = token.replace(/\s/g, '␣').replace(/\n/g, '↵');
-              tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
-              span.appendChild(tooltip);
-
-              span.style.backgroundColor = getColorForPerplexity(perplexity);
-              span.style.color = 'black';
-              container.appendChild(span);
-            }
-            if (idx < segments.length - 1) {
-              container.appendChild(document.createElement('br'));
-            }
-          });
-        } else {
-          const span = document.createElement("span");
-          span.className = "token";
-
-          // Create content container
-          const content = document.createElement("span");
-          content.className = "token-content";
-          content.textContent = token;
-          span.appendChild(content);
-
-          // Create tooltip div
-          const tooltip = document.createElement("div");
-          tooltip.className = "token-tooltip";
-          const displayToken = token.replace(/\s/g, '␣');
-          tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
-
-          span.appendChild(tooltip);
-          span.style.backgroundColor = getColorForPerplexity(perplexity);
-          span.style.color = "black";
-
-          container.appendChild(span);
-        }
-        
-        document.getElementById("results").style.display = "block";
-      }
-
-      function updateProgressBar(progress) {
-        // Works in all browsers, including Firefox
-        const progressBar = document.querySelector('.progress-bar');
-        const progressFill = document.querySelector('.progress-bar-fill');
-        progressBar.style.display = 'block';
-        // Force reflow
-        progressFill.offsetWidth;
-        progressFill.style.width = `${progress}%`;
-      }
-
-      async function calculatePerplexity(text) {
-        if (!worker) {
-          throw new Error("Model not loaded");
-        }
-
-        const CONTEXT_WINDOW = 10;
-        const BATCH_SIZE = 10;
-        const MAX_TOKENS = 500;
-
-        const progressBar = document.querySelector('.progress-bar');
-        const progressFill = document.querySelector('.progress-bar-fill');
-        progressBar.style.display = 'block';
-        progressFill.style.width = '0%';
-
-        // Send the text to the worker for processing
-        worker.postMessage({
-          type: 'process',
-          data: {
-            text,
-            contextWindow: CONTEXT_WINDOW,
-            batchSize: BATCH_SIZE,
-            maxTokens: MAX_TOKENS
+          } else if (type === 'progress') {
+            updateProgressBar(progress);
           }
-        });
-      }
+        };
 
-      async function analyzeText() {
-        // Clear previous results
-        const tokenDisplay = document.getElementById("tokenDisplay");
-        tokenDisplay.innerHTML = "";
-        const textInput = document.getElementById("textInput");
-        const text = textInput.value;
-
-        if (!text.trim()) {
-          showError("Please enter some text to analyze.");
-          return;
-        }
-
-        hideError();
-
-        // Show loading state
-        document.getElementById("loading").style.display = "block";
-        document.getElementById("results").style.display = "none";
-        document.getElementById("analyzeBtn").disabled = true;
-
-        try {
-          // Wait for model to be loaded if it isn't already
-          if (!worker) {
-            await initializeModel();
-          }
-
-          await calculatePerplexity(text);
-        } catch (error) {
-          console.error("Error analyzing text:", error);
-          showError("Error analyzing text: " + error.message);
-        } finally {
+        worker.onerror = function (error) {
+          showError("Worker error: " + error.message);
           document.getElementById("loading").style.display = "none";
           document.getElementById("analyzeBtn").disabled = false;
-        }
+          document.querySelector('.progress-bar').style.display = 'none';
+        };
+
+        worker.postMessage({ type: 'init' });
+      } catch (error) {
+        console.error("Error loading model:", error);
+        showError("Failed to load the model. Please refresh the page and try again.");
+      }
+    }
+
+    function getColorForPerplexity(perplexity) {
+      const normalized = Math.min(perplexity / 1000, 1);
+      const r = 194 + Math.floor(46 * normalized);
+      const g = 194 + Math.floor(46 * (1 - normalized));
+      const b = 194;
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function showError(message) {
+      const errorDiv = document.getElementById("error");
+      errorDiv.textContent = message;
+      errorDiv.style.display = "block";
+    }
+
+    function hideError() {
+      document.getElementById("error").style.display = "none";
+    }
+
+    function displayTokenResult(token, perplexity, result) {
+      const tokenDisplay = document.getElementById("tokenDisplay");
+
+      // Create token container if it doesn't exist
+      if (!tokenDisplay.firstElementChild) {
+        const container = document.createElement("div");
+        container.className = "token-container";
+        tokenDisplay.appendChild(container);
       }
 
-      // Set up event listeners when DOM is loaded
-      window.addEventListener("DOMContentLoaded", () => {
-        document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
-        document.getElementById("analyzeBtn").disabled = true;
-        document.getElementById("modelLoadingNotice").style.display = 'inline-block';
-        initializeModel();
+      const container = tokenDisplay.firstElementChild;
+
+      // Handle tokens with embedded newlines: split into segments
+      if (token.includes('\n')) {
+        const segments = token.split('\n');
+        segments.forEach((seg, idx) => {
+          if (seg.length) {
+            const span = document.createElement('span');
+            span.className = 'token';
+            const content = document.createElement('span');
+            content.className = 'token-content';
+            content.textContent = seg;
+            span.appendChild(content);
+
+            const tooltip = document.createElement('div');
+            tooltip.className = 'token-tooltip';
+            const displayToken = token.replace(/\s/g, '␣').replace(/\n/g, '↵');
+            tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
+            span.appendChild(tooltip);
+
+            span.style.backgroundColor = getColorForPerplexity(perplexity);
+            span.style.color = 'black';
+            container.appendChild(span);
+          }
+          if (idx < segments.length - 1) {
+            container.appendChild(document.createElement('br'));
+          }
+        });
+      } else {
+        const span = document.createElement("span");
+        span.className = "token";
+
+        // Create content container
+        const content = document.createElement("span");
+        content.className = "token-content";
+        content.textContent = token;
+        span.appendChild(content);
+
+        // Create tooltip div
+        const tooltip = document.createElement("div");
+        tooltip.className = "token-tooltip";
+        const displayToken = token.replace(/\s/g, '␣');
+        tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
+
+        span.appendChild(tooltip);
+        span.style.backgroundColor = getColorForPerplexity(perplexity);
+        span.style.color = "black";
+
+        container.appendChild(span);
+      }
+
+      document.getElementById("results").style.display = "block";
+    }
+
+    function updateProgressBar(progress) {
+      // Works in all browsers, including Firefox
+      const progressBar = document.querySelector('.progress-bar');
+      const progressFill = document.querySelector('.progress-bar-fill');
+      progressBar.style.display = 'block';
+      // Force reflow
+      progressFill.offsetWidth;
+      progressFill.style.width = `${progress}%`;
+    }
+
+    async function calculatePerplexity(text) {
+      if (!worker) {
+        throw new Error("Model not loaded");
+      }
+
+      const CONTEXT_WINDOW = 10;
+      const BATCH_SIZE = 10;
+      const MAX_TOKENS = 500;
+
+      const progressBar = document.querySelector('.progress-bar');
+      const progressFill = document.querySelector('.progress-bar-fill');
+      progressBar.style.display = 'block';
+      progressFill.style.width = '0%';
+
+      // Send the text to the worker for processing
+      worker.postMessage({
+        type: 'process',
+        data: {
+          text,
+          contextWindow: CONTEXT_WINDOW,
+          batchSize: BATCH_SIZE,
+          maxTokens: MAX_TOKENS
+        }
       });
-    </script>
-  </body>
+    }
+
+    async function analyzeText() {
+      // Clear previous results
+      const tokenDisplay = document.getElementById("tokenDisplay");
+      tokenDisplay.innerHTML = "";
+      const textInput = document.getElementById("textInput");
+      const text = textInput.value;
+
+      if (!text.trim()) {
+        showError("Please enter some text to analyze.");
+        return;
+      }
+
+      hideError();
+
+      // Show loading state
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("results").style.display = "none";
+      document.getElementById("analyzeBtn").disabled = true;
+
+      try {
+        // Wait for model to be loaded if it isn't already
+        if (!worker) {
+          await initializeModel();
+        }
+
+        await calculatePerplexity(text);
+      } catch (error) {
+        console.error("Error analyzing text:", error);
+        showError("Error analyzing text: " + error.message);
+      } finally {
+        document.getElementById("loading").style.display = "none";
+        document.getElementById("analyzeBtn").disabled = false;
+      }
+    }
+
+    // Set up event listeners when DOM is loaded
+    window.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("analyzeBtn").addEventListener("click", analyzeText);
+      document.getElementById("analyzeBtn").disabled = true;
+      document.getElementById("modelLoadingNotice").style.display = 'inline-block';
+      initializeModel();
+    });
+  </script>
+</body>
+
 </html>

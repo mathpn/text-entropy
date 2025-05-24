@@ -4,27 +4,32 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Token Perplexity Visualizer</title>
+  <title>Perplexity Visualizer</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      max-width: 800px;
+      font-family: 'Segoe UI', 'Arial', sans-serif;
+      max-width: 820px;
       margin: 0 auto;
-      padding: 20px;
-      background-color: #f5f5f5;
+      padding: 28px;
+      background-color: #edf0f2;
+      color: #232629;
     }
 
     .container {
-      background-color: white;
-      padding: 30px;
-      border-radius: 10px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      background: #fcfcfd;
+      padding: 36px 36px 28px 36px;
+      border-radius: 18px;
+      box-shadow: 0 4px 32px rgba(40, 40, 60, 0.065), 0 1.5px 5px rgba(140, 150, 160, 0.03);
+      border: 1.5px solid #e2e8f0;
     }
 
     h1 {
-      text-align: center;
-      color: #333;
-      margin-bottom: 30px;
+      text-align: left;
+      color: #222b32;
+      font-size: 1.55rem;
+      margin-bottom: 20px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
     }
 
     .input-section {
@@ -34,53 +39,65 @@
     textarea {
       width: 100%;
       min-height: 120px;
-      padding: 15px;
-      border: 2px solid #ddd;
-      border-radius: 8px;
+      padding: 14px 16px;
+      border: 1.5px solid #d6dde7;
+      border-radius: 9px;
       font-size: 16px;
       font-family: inherit;
       resize: vertical;
+      background: #f8fafb;
       box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     textarea:focus {
       outline: none;
-      border-color: #007bff;
+      border-color: #8b9cb0;
+      box-shadow: 0 2px 10px 0 rgba(80, 90, 120, 0.08);
+      background: #fff;
     }
 
     button {
-      background-color: #007bff;
+      background: #5d7290;
       color: white;
       border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
+      padding: 11px 28px;
+      border-radius: 7px;
       font-size: 16px;
+      font-weight: 500;
       cursor: pointer;
       margin-top: 15px;
-      transition: background-color 0.3s;
+      transition: background 0.25s, box-shadow 0.25s;
+      box-shadow: 0 2px 8px rgba(40, 60, 70, 0.03);
+      letter-spacing: 0.01em;
     }
 
     button:hover:not(:disabled) {
-      background-color: #0056b3;
+      background: #4375b7;
+      box-shadow: 0 4px 16px rgba(30, 60, 110, 0.09);
     }
 
     button:disabled {
-      background-color: #ccc;
+      background: #ccd3de;
       cursor: not-allowed;
+      color: #7d8c97;
     }
 
     .loading {
       text-align: center;
-      color: #666;
+      color: #848b97;
       margin: 20px 0;
+      font-size: 1rem;
+      font-style: italic;
     }
 
     .results {
       margin-top: 30px;
-      padding: 20px;
-      background-color: #f8f9fa;
+      padding: 23px 20px 18px 20px;
+      background: #f7faff;
       border-radius: 8px;
-      border: 1px solid #e9ecef;
+      border: 1.2px solid #dde3ea;
+      box-shadow: 0 1px 4px rgba(160, 180, 200, 0.03);
     }
 
     .token-container {
@@ -89,27 +106,33 @@
       line-height: 1.5;
       white-space: normal;
       word-wrap: break-word;
+      margin-bottom: 4px;
     }
 
     .token {
       display: inline;
       padding: 0;
       margin: 0;
-      font-family: sans-serif;
+      font-family: inherit;
       font-size: 16px;
       cursor: pointer;
       position: relative;
     }
 
+    .token:hover {
+      box-shadow: 0 1px 6px rgba(80, 90, 120, 0.09);
+      z-index: 2;
+    }
+
     .token.newline {
       display: block;
-      height: 1.2em;
+      height: 1.15em;
     }
 
     .token-content {
       white-space: pre;
       display: inline-block;
-      height: 1.2em;
+      height: 1.15em;
       vertical-align: text-bottom;
     }
 
@@ -119,19 +142,21 @@
       bottom: calc(100% + 5px);
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(33, 37, 41, 0.95);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
+      background: rgba(40, 45, 60, 0.97);
+      color: #eee;
+      padding: 6px 13px;
+      border-radius: 7px;
       font-size: 13px;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: inherit;
       line-height: 1.4;
       white-space: pre-wrap;
       z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 4px 20px rgba(45, 60, 100, 0.17);
       pointer-events: none;
-      max-width: 200px;
+      max-width: 260px;
       width: max-content;
+      border: 1px solid #4d5b7b;
+      opacity: 0.98;
     }
 
     .token-tooltip::after {
@@ -142,7 +167,7 @@
       transform: translateX(-50%);
       border-width: 5px;
       border-style: solid;
-      border-color: rgba(33, 37, 41, 0.95) transparent transparent transparent;
+      border-color: rgba(40, 45, 60, 0.97) transparent transparent transparent;
     }
 
     .token:hover .token-tooltip {
@@ -150,32 +175,36 @@
     }
 
     .error {
-      color: #dc3545;
-      background-color: #f8d7da;
-      border: 1px solid #f5c6cb;
-      padding: 15px;
+      color: #a12a35;
+      background: #fbeaec;
+      border: 1.2px solid #e5cacf;
+      padding: 13px 17px;
       border-radius: 6px;
       margin-top: 15px;
+      font-size: 15px;
+      letter-spacing: 0.01em;
     }
 
     .model-info {
-      font-size: 14px;
-      color: #666;
-      margin-bottom: 15px;
+      font-size: 13.5px;
+      color: #68728b;
+      margin-bottom: 13px;
+      font-style: italic;
     }
 
     .progress-bar {
       width: 100%;
       height: 4px;
-      background-color: #e9ecef;
+      background: #eceff4;
       border-radius: 2px;
-      margin-top: 10px;
+      margin-top: 12px;
       overflow: hidden;
+      box-shadow: 0 1px 3px rgba(140, 150, 200, 0.09);
     }
 
     .progress-bar-fill {
       height: 100%;
-      background-color: #007bff;
+      background: linear-gradient(90deg, #b6c8eb 0%, #5d7290 100%);
       transition: width 0.3s ease;
     }
   </style>
@@ -183,10 +212,10 @@
 
 <body>
   <div class="container">
-    <h1>Token Perplexity Visualizer</h1>
+    <h1>Perplexity Visualizer</h1>
 
     <div class="model-info">
-      Using: GPT-2 (124M) via Hugging Face transformers.js
+      Using: GPT-2 (124M) via transformers.js running locally
     </div>
 
     <div class="input-section">
@@ -246,18 +275,19 @@
             document.getElementById('perplexityDisplay').textContent = `Perplexity: ${e.data.perplexity.toFixed(2)}`;
           } else if (type === 'error') {
             showError(error);
-            document.getElementById("loading").style.display = "none";
             document.getElementById("analyzeBtn").disabled = false;
             document.getElementById("modelLoadingNotice").style.display = 'none';
             document.querySelector('.progress-bar').style.display = 'none';
           } else if (type === 'progress') {
             updateProgressBar(progress);
+            if (progress >= 100) {
+              document.getElementById("analyzeBtn").disabled = false;
+            }
           }
         };
 
         worker.onerror = function (error) {
           showError("Worker error: " + error.message);
-          document.getElementById("loading").style.display = "none";
           document.getElementById("analyzeBtn").disabled = false;
           document.querySelector('.progress-bar').style.display = 'none';
         };
@@ -406,7 +436,6 @@
       hideError();
 
       // Show loading state
-      document.getElementById("loading").style.display = "block";
       document.getElementById("results").style.display = "none";
       document.getElementById("analyzeBtn").disabled = true;
 
@@ -420,9 +449,6 @@
       } catch (error) {
         console.error("Error analyzing text:", error);
         showError("Error analyzing text: " + error.message);
-      } finally {
-        document.getElementById("loading").style.display = "none";
-        document.getElementById("analyzeBtn").disabled = false;
       }
     }
 

@@ -105,7 +105,7 @@ async function processBatch(inputs, startIdx) {
 
       results.push({
         index: i + startIdx,
-        probability: Math.round(targetProb * 1000) / 10,
+        probability: Math.round(targetProb * 10000) / 100,
         logProb: Math.round(Math.log(targetProb) * 1000) / 1000,
         tokenString: tokenizer.decode([target])
       });

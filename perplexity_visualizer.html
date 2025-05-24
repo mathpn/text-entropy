@@ -282,7 +282,7 @@
             document.getElementById("modelLoadingNotice").style.display = 'none';
           } else if (type === 'results') {
             results.forEach(result => {
-              displayTokenResult(result.tokenString, result.perplexity, result);
+              displayTokenResult(result.tokenString, result.logProb, result);
             });
           } else if (type === 'perplexity') {
             document.getElementById('perplexityDisplay').textContent = `Perplexity: ${e.data.perplexity.toFixed(2)}`;
@@ -311,10 +311,10 @@
       }
     }
 
-    function getColorForPerplexity(perplexity) {
-      const normalized = Math.min(perplexity / 1000, 1);
-      const r = 194 + Math.floor(46 * normalized);
-      const g = 194 + Math.floor(46 * (1 - normalized));
+    function getColorForToken(logProb) {
+      const normalized = (20 + Math.max(logProb, -20)) / 20;
+      const r = 194 + Math.floor(46 * (1 - normalized));
+      const g = 194 + Math.floor(46 * normalized);
       const b = 194;
       return `rgb(${r}, ${g}, ${b})`;
     }
@@ -329,7 +329,7 @@
       document.getElementById("error").style.display = "none";
     }
 
-    function displayTokenResult(token, perplexity, result) {
+    function displayTokenResult(token, logProb, result) {
       const tokenDisplay = document.getElementById("tokenDisplay");
 
       // Create token container if it doesn't exist
@@ -359,7 +359,7 @@
             tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
             span.appendChild(tooltip);
 
-            span.style.backgroundColor = getColorForPerplexity(perplexity);
+            span.style.backgroundColor = getColorForToken(logProb);
             span.style.color = 'black';
             container.appendChild(span);
           }
@@ -384,7 +384,7 @@
         tooltip.textContent = `Token: "${displayToken}"\nProbability: ${result.probability}%\nLog Probability: ${result.logProb}`;
 
         span.appendChild(tooltip);
-        span.style.backgroundColor = getColorForPerplexity(perplexity);
+        span.style.backgroundColor = getColorForToken(logProb);
         span.style.color = "black";
 
         container.appendChild(span);

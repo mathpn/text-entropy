@@ -92,11 +92,9 @@ async function processBatch(batchInputs, startIdx) {
     const sumExp = expLogits.reduce((a, b) => a + b, 0);
 
     const targetProb = expLogits[target] / sumExp || 1e-10;
-    const perplexity = 1 / targetProb;
 
     results.push({
       index: startIdx + i,
-      perplexity,
       probability: Math.round(targetProb * 1000) / 10,
       logProb: Math.round(Math.log(targetProb) * 1000) / 1000,
       tokenString: tokenizer.decode([target])

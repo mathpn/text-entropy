@@ -1,4 +1,5 @@
 import { AutoTokenizer, AutoModelForCausalLM } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1';
+import { softmax } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1/src/utils/maths.js';
 
 let model = null;
 let tokenizer = null;
@@ -6,10 +7,10 @@ let tokenizer = null;
 async function initializeModel() {
   try {
     tokenizer = await AutoTokenizer.from_pretrained(
-      "HuggingFaceTB/SmolLM2-135M-Instruct"
+      "Xenova/gpt2"
     );
     model = await AutoModelForCausalLM.from_pretrained(
-      "HuggingFaceTB/SmolLM2-135M-Instruct"
+      "Xenova/gpt2", { model_file_name: "decoder_model", dtype: "q8" },
     );
     self.postMessage({ type: 'modelReady' });
   } catch (error) {
@@ -18,87 +19,97 @@ async function initializeModel() {
 }
 
 async function processText(text, contextWindow, batchSize, maxTokens) {
+
+  const batchStrings = [];
+  const batchTargets = [];
   try {
-    const tokens = await tokenizer(text);
-    const inputIds = tokens.input_ids.data;
-    const numTokens = Math.min(inputIds.length, maxTokens);
+    // Add bos token to begginning of text
+    const bosToken = tokenizer.decode([tokenizer.bos_token_id]);
+    const tokens = tokenizer(bosToken + text, { add_special_tokens: false });
+    const inputIds = tokens.input_ids;
+    const numTokens = Math.min(inputIds.data.length, maxTokens);
 
     let logProbSum = 0;
     let count = 0;
 
     self.postMessage({ type: 'progress', progress: 0 });
 
-    // Process tokens in batches
-    for (let startIdx = 0; startIdx < numTokens; startIdx += batchSize) {
-      const endIdx = Math.min(startIdx + batchSize, numTokens);
-      const batchInputs = [];
+    for (let i = 1; i < numTokens; i++) {
+      const startIdx = Math.max(0, i - contextWindow);
+      const batchString = tokenizer.decode(inputIds.slice(null, [startIdx, i]));
+      const target = inputIds.slice(null, i).item();
+      batchStrings.push(batchString);
+      batchTargets.push(target);
+    }
 
-      // Update progress
-      const progress = (startIdx / numTokens) * 100;
-      self.postMessage({ type: 'progress', progress });
-
-      // Create batch input tensors
-      for (let i = startIdx; i < endIdx; i++) {
-        const contextStart = Math.max(0, i - contextWindow);
-        batchInputs.push({
-          input_ids: tokens.input_ids.slice([0, 1], [contextStart, i]),
-          attention_mask: tokens.attention_mask.slice([0, 1], [contextStart, i]),
-          target: inputIds[i]
-        });
+    // Create batches with batchSize elements from batchString
+    for (let i = 0; i < batchStrings.length; i += batchSize) {
+      const endIdx = Math.min(i + batchSize, batchStrings.length);
+      const batch = batchStrings.slice(i, endIdx);
+      const batchTokens = tokenizer(batch, { padding: true });
+      const batchInput = {
+        input_ids: batchTokens.input_ids,
+        attention_mask: batchTokens.attention_mask,
+        targets: batchTargets.slice(i, endIdx)
       }
 
-      // Process the batch
-      const results = await processBatch(batchInputs, startIdx);
+      const results = await processBatch(batchInput, i * batchSize, (i + 1) * batchSize, i);
       self.postMessage({ type: 'results', results });
+
+      // Update progress
+      const progress = (i / batchStrings.length) * 100;
+      self.postMessage({ type: 'progress', progress });
 
       for (const result of results) {
         logProbSum += result.logProb;
         count++;
       }
 
-      // Add a small delay between batches
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Send perplexity
+      if (count > 0) {
+        const perp = Math.exp(-logProbSum / count);
+        self.postMessage({
+          type: 'perplexity',
+          perplexity: perp
+        });
+      }
     }
 
-    // Send perplexity
-    if (count > 0) {
-      const perp = Math.exp(-logProbSum / count);
-      self.postMessage({
-        type: 'perplexity',
-        perplexity: perp
-      });
-    }
-
-    // Send completion progress
     self.postMessage({ type: 'progress', progress: 100 });
   } catch (error) {
     self.postMessage({ type: 'error', error: error.message });
   }
+
+
 }
 
-async function processBatch(batchInputs, startIdx) {
+async function processBatch(inputs, startIdx) {
+  const outputs = await model(inputs);
+  const logits = outputs.logits;
+  const attention_mask = inputs.attention_mask;
+
+  const batchSize = logits.dims[0];
   const results = [];
-  for (let i = 0; i < batchInputs.length; i++) {
-    const input = batchInputs[i];
-    const target = input.target;
 
-    const outputs = await model(input);
-    const logits = outputs.logits;
-    const vocabSize = model.config.vocab_size;
-    const lastTokenLogits = logits.data.slice(-vocabSize);
+  for (let i = 0; i < batchSize; ++i) {
+    const seqMaskSlice = attention_mask.slice(i, null);
+    const seqMaskData = Array.from(seqMaskSlice.data);
+    const seqLength = seqMaskData.reduce((acc, val) => acc + val, BigInt(0));
+    const lastTokenIdx = seqLength - BigInt(1);
 
-    const maxLogit = Math.max(...lastTokenLogits);
-    const expLogits = lastTokenLogits.map(l => Math.exp(l - maxLogit));
-    const sumExp = expLogits.reduce((a, b) => a + b, 0);
+    if (lastTokenIdx !== -1) {
+      const lastTokenLogits = logits.slice(i, Number(lastTokenIdx), null);
+      const probs = softmax(lastTokenLogits.data);
+      const target = inputs.targets[i];
+      const targetProb = probs[target];
 
-    const targetProb = expLogits[target] / sumExp || 1e-10;
-
-    results.push({
-      index: startIdx + i,
-      probability: Math.round(targetProb * 1000) / 10,
-      logProb: Math.round(Math.log(targetProb) * 1000) / 1000,
-      tokenString: tokenizer.decode([target])
-    });
+      results.push({
+        index: i + startIdx,
+        probability: Math.round(targetProb * 1000) / 10,
+        logProb: Math.round(Math.log(targetProb) * 1000) / 1000,
+        tokenString: tokenizer.decode([target])
+      });
+    }
   }
   return results;
 }

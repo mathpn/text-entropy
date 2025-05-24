@@ -95,8 +95,8 @@
       display: inline;
       padding: 0;
       margin: 0;
-      font-family: monospace;
-      font-size: 14px;
+      font-family: sans-serif;
+      font-size: 16px;
       cursor: pointer;
       position: relative;
     }
@@ -178,33 +178,6 @@
       background-color: #007bff;
       transition: width 0.3s ease;
     }
-
-    .legend {
-      margin: 20px 0;
-      padding: 15px;
-      background-color: #f8f9fa;
-      border-radius: 8px;
-      border: 1px solid #e9ecef;
-    }
-
-    .legend p {
-      margin: 0 0 10px 0;
-      font-weight: bold;
-    }
-
-    .legend-gradient {
-      height: 20px;
-      border-radius: 4px;
-      background: linear-gradient(to right, rgb(194, 240, 194), rgb(240, 194, 194));
-      margin-bottom: 5px;
-    }
-
-    .legend-labels {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: #666;
-    }
   </style>
 </head>
 
@@ -213,7 +186,7 @@
     <h1>Token Perplexity Visualizer</h1>
 
     <div class="model-info">
-      Using: SmolLM2-135M-Instruct via Hugging Face transformers.js
+      Using: GPT-2 (124M) via Hugging Face transformers.js
     </div>
 
     <div class="input-section">
@@ -240,25 +213,10 @@
       <div id="perplexityDisplay"
         style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e9ecef; font-weight: bold;"></div>
     </div>
-
-    <div class="legend">
-      <p>Color scale:</p>
-      <div class="legend-gradient"></div>
-      <div class="legend-labels">
-        <span>Low probability</span>
-        <span>High probability</span>
-      </div>
-    </div>
-
   </div>
 
   <script type="module">
-    import {
-      pipeline,
-      AutoTokenizer,
-      AutoModelForCausalLM,
-      env,
-    } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
+    import { env } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.5.1";
 
     // Enable model caching to localStorage
     env.allowLocalModels = false;
@@ -312,12 +270,16 @@
     }
 
     function getColorForToken(logProb) {
-      const normalized = (20 + Math.max(logProb, -20)) / 20;
-      const r = 194 + Math.floor(46 * (1 - normalized));
-      const g = 194 + Math.floor(46 * normalized);
-      const b = 194;
-      return `rgb(${r}, ${g}, ${b})`;
+      const minLogProb = -10;
+      const maxLogProb = -0.5;
+      const clamped = Math.max(minLogProb, logProb);
+      const scale = (clamped - minLogProb) / (maxLogProb - minLogProb);
+      const hue = 0 + 120 * scale;
+      const saturation = 60;
+      const lightness = 85;
+      return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
     }
+
 
     function showError(message) {
       const errorDiv = document.getElementById("error");
@@ -408,8 +370,8 @@
         throw new Error("Model not loaded");
       }
 
-      const CONTEXT_WINDOW = 10;
-      const BATCH_SIZE = 10;
+      const CONTEXT_WINDOW = 16;
+      const BATCH_SIZE = 4;
       const MAX_TOKENS = 500;
 
       const progressBar = document.querySelector('.progress-bar');
